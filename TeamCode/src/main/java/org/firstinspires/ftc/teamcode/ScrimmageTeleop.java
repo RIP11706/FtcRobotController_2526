@@ -1,18 +1,15 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-//public class ScrimmageTeleop.java {
-//package org.firstinspires.ftc.robotcontroller.external.samples;
-
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+
+//public class ScrimmageTeleop {
+//package org.firstinspires.ftc.robotcontroller.external.samples;
+
 
 /*
  * This file contains an example of a Linear "OpMode".
@@ -42,13 +39,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@TeleOp(name="ScrimmageTeleop", group="Linear OpMode")
-@Disabled
-class ScrimmageTeleop extends LinearOpMode {
-    @Override
-    public void runOpMode() throws InterruptedException {
+//@TeleOp(name="ScrimmageTeleop", group="Linear OpMode")
+//@Disabled
+//public class ScrimmageTeleop extends LinearOpMode {
+    //@Override
+    //public void runOpMode() {
 
-    }
+
+
 //package org.firstinspires.ftc.teamcode;
 
 //import com.qualcomm.robotcore.eventloop.opmode.Disabled;
@@ -85,21 +83,21 @@ class ScrimmageTeleop extends LinearOpMode {
      * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
      */
 
-    @TeleOp(name = "Basic: Omni Linear OpMode", group = "Linear OpMode")
-    @Disabled
-    public class ScrimageTeleop extends LinearOpMode {
+    @TeleOp(name = "Scrimmage Teleop", group = "Linear OpMode")
+    //@Disabled
+    public class ScrimmageTeleop extends LinearOpMode {
 
         // Declare OpMode members for each of the 4 motors.
-        private ElapsedTime runtime = new ElapsedTime();
+        private final ElapsedTime runtime = new ElapsedTime();
         private DcMotor leftFrontDrive = null;
         private DcMotor leftBackDrive = null;
         private DcMotor rightFrontDrive = null;
         private DcMotor rightBackDrive = null;
         // NEW: Declare the shooter motor variable
-        private DcMotor shooter_motor = null;
+        private DcMotor shooter_drive = null;
 
         @Override
-        public void runOpMode() {
+        public void runOpMode() throws InterruptedException  {
 
             // Initialize the hardware variables. Note that the strings used here must correspond
             // to the names assigned during the robot configuration step on the DS or RC devices.
@@ -109,7 +107,7 @@ class ScrimmageTeleop extends LinearOpMode {
             rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
             //  the shooter motor from the hardware map
             // Make sure you have a motor named "shooter_motor" in your robot configuration
-            shooter_motor = hardwareMap.get(DcMotor.class, "shooter_motor");
+            shooter_drive = hardwareMap.get(DcMotor.class, "shooter_motor");
 
 
             // ########################################################################################
@@ -122,18 +120,18 @@ class ScrimmageTeleop extends LinearOpMode {
             // when you first test your robot, push the left joystick forward and observe the direction the wheels turn.
             // Reverse the direction (flip FORWARD <-> REVERSE ) of any wheel that runs backward
             // Keep testing until ALL the wheels move the robot forward when you push the left joystick forward.
-            leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+            leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
             leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
             rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-            rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
+            rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
 
             // NEW: Configure the shooter motor for positional control
             // Set the motor to run using its encoder
-            shooter_motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            shooter_drive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             // Reset the encoder's current position to 0
-            shooter_motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            shooter_drive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             // Set the motor to hold its position when it's not moving
-            shooter_motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            shooter_drive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
             // Wait for the game to start (driver presses START)
             telemetry.addData("Status", "Initialized");
@@ -199,13 +197,13 @@ class ScrimmageTeleop extends LinearOpMode {
                 // and back to 0 when 'A' is pressed on gamepad2.
                 if (gamepad2.y) {
                     // The limits of 0 and 100 are enforced here in the code.
-                    shooter_motor.setTargetPosition(100);
-                    shooter_motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    shooter_motor.setPower(0.8); // Set power to move to the target
+                    shooter_drive.setTargetPosition(100);
+                    shooter_drive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    shooter_drive.setPower(0.8); // Set power to move to the target
                 } else if (gamepad2.a) {
-                    shooter_motor.setTargetPosition(0);
-                    shooter_motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    shooter_motor.setPower(0.8); // Set power to move to the target
+                    shooter_drive.setTargetPosition(0);
+                    shooter_drive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    shooter_drive.setPower(0.8); // Set power to move to the target
 
                     // Show the elapsed game time and wheel power.
                     telemetry.addData("Status", "Run Time: " + runtime.toString());
@@ -213,10 +211,10 @@ class ScrimmageTeleop extends LinearOpMode {
                     telemetry.addData("Back  left/Right", "%4.2f, %4.2f", leftBackPower, rightBackPower);
                     telemetry.update();
                     // NEW: Add shooter motor position to telemetry
-                    telemetry.addData("Shooter Position", shooter_motor.getCurrentPosition());
+                    telemetry.addData("Shooter Position", shooter_drive.getCurrentPosition());
                     telemetry.update();
                 }
             }
         }
     }
-}
+
