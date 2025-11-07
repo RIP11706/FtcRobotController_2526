@@ -23,7 +23,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class MotorRampWithTriggers_StateMachine extends LinearOpMode {
 
     // 1. Define the states for our state machine
-    private enum RampState {
+    enum RampState {
         STEADY,
         RAMPING_UP,
         RAMPING_DOWN
@@ -40,6 +40,7 @@ public class MotorRampWithTriggers_StateMachine extends LinearOpMode {
     // Declare OpMode members
     private DcMotor motor = null;
     private double currentMotorPower = 0.0;
+
 
     // Create a timer to manage the ramp rate
     private final ElapsedTime rampTimer = new ElapsedTime();
@@ -105,6 +106,7 @@ public class MotorRampWithTriggers_StateMachine extends LinearOpMode {
             }
 
             // 4. Set the motor power
+
             motor.setPower(currentMotorPower);
 
             // 5. Provide telemetry for debugging
@@ -144,5 +146,75 @@ public class MotorRampWithTriggers_StateMachine extends LinearOpMode {
         else {
             currentState = RampState.STEADY;
         }
+        class BasicTankDrive extends LinearOpMode {
+
+            // 1. Declare hardware variables
+            private DcMotor leftFrontDrive = null;
+            private DcMotor rightFrontDrive = null;
+            private DcMotor leftBackDrive = null;
+            private DcMotor rightBackDrive = null;
+
+            @Override
+            public void runOpMode() {
+
+                // 2. Initialize hardware from the robot's configuration
+                telemetry.addData("Status", "Initializing...");
+                telemetry.update();
+
+                // Map the motors to the names in the robot's configuration file
+                leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
+                rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+                leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
+                rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
+
+                // 3. Set motor directions
+                // Most robots need the motors on one side to be reversed to drive forward.
+                // If your robot drives backwards when you push the joysticks forward,
+                // reverse the directions here. For example, switch REVERSE to FORWARD.
+                leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
+                leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
+                rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+                rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
+
+                // Optional: Set the motors to brake when power is zero.
+                // This can help prevent the robot from drifting.
+                leftFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+                // Let the driver know initialization is complete.
+                telemetry.addData("Status", "Initialized");
+                telemetry.addData(">", "Press Start to drive");
+                telemetry.update();
+
+                // 4. Wait for the driver to press the START button
+                waitForStart();
+
+                // The op mode is now running. The loop will continue until the driver presses STOP.
+                while (opModeIsActive()) {
+
+                    // 5. Get joystick values from gamepad 1
+                    // The Y-axis of the joysticks is inverted (pushing forward gives a negative value).
+                    // We negate the values to make forward positive.
+                    double leftPower = -gamepad1.left_stick_y;
+                    double rightPower = -gamepad1.right_stick_y;
+                    // 6. Set the power for each motor
+                    // The left joystick controls the left motors, and the right joystick controls the right motors.
+                    leftFrontDrive.setPower(leftPower);
+                    leftBackDrive.setPower(leftPower);
+                    rightFrontDrive.setPower(rightPower);
+                    rightBackDrive.setPower(rightPower);
+
+                    // 7. Add telemetry for debugging
+                    telemetry.addData("Status", "Running");
+                    telemetry.addData("Left Power", "%.2f", leftPower);
+                    telemetry.addData("Right Power", "%.2f", rightPower);
+                    telemetry.update();
+                }
+            }
+        }
     }
 }
+
+
