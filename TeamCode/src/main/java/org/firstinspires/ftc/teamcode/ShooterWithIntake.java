@@ -34,7 +34,15 @@ public class ShooterWithIntake extends LinearOpMode {
     private DcMotor rightFrontDrive = null;
     private DcMotor leftBackDrive = null;
     private DcMotor rightBackDrive = null;
+    enum IntakeState {
+        IntakeOff,
+        Intake1,
+        Intake2,
+        Intake3
+    }
 
+    // Set the initial state
+    private IntakeState currentIntakeState = IntakeState.IntakeOff;
 
     // Create a timer to manage the ramp rate
     private final ElapsedTime rampTimer = new ElapsedTime();
@@ -53,8 +61,8 @@ public class ShooterWithIntake extends LinearOpMode {
         telemetry.addData(">", "Press Start to begin");
 
         telemetry.update();
-        telemetry.update();
-        telemetry.speak("Six seven");
+        // telemetry.update();
+        //telemetry.speak("Six seven");
 
         // Map the motors to the names in the robot's configuration file
         leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
@@ -140,19 +148,36 @@ public class ShooterWithIntake extends LinearOpMode {
             telemetry.update();
 
             // --- INTAKE ---
+            switch (currentIntakeState) {
+                case IntakeOff:
+                    Intakemotor.setPower(0);
+                    break;
+                case Intake1:
+                    Intakemotor.setPower(0.1);
+                    break;
+                case Intake2:
+                    Intakemotor.setPower(0.1);
+                    break;
+                case Intake3:
+                    Intakemotor.setPower(-0.1);
+                    break;
+
+
+            }
+
             if (gamepad1.xWasPressed()) {
                 IntakeOn = !IntakeOn;
             }
 
             if (IntakeOn) {
-                Intakemotor.setPower(0.67676767676767676767676767);
+                currentIntakeState = IntakeState.Intake1;
+            } else if (gamepad1.a){
+               currentIntakeState = IntakeState.Intake3;
             } else {
-                Intakemotor.setPower(0);
+                currentIntakeState = IntakeState.IntakeOff;
             }
 
-            if (gamepad1.a){
-                Intakemotor.setPower(-Intakemotor.getPower());
-            }
+
 
             // --- DRIVETRAIN ---
 
