@@ -2,12 +2,10 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-
-import org.firstinspires.ftc.robotcontroller.external.samples.UtilityOctoQuadConfigMenu;
 
 @TeleOp(name = ": ShooterWithIntake V1", group = "Concept")
 
@@ -34,10 +32,10 @@ public class ShooterWithIntake extends LinearOpMode {
     public  double LAUNCHER_TARGET_VELOCITY = 1275;
     public  double LAUNCHER_MIN_VELOCITY = 1075;
     private double STOP_VELOCITY = 0;
-    private double FEED_TIME_SECONDS = 0.4;
+    private double FEED_TIME_SECONDS = 2.0;
 
     private DcMotor feederMotor = null;
-    private CRServo lift = null;
+    private Servo liftServo = null;
 
     private double currentMotorPower = 0.0;
 // lift servo
@@ -53,7 +51,7 @@ public class ShooterWithIntake extends LinearOpMode {
         Intake2,
         Intake3
     }
-
+    boolean Now = false;
     // Set the initial state
     private IntakeState currentIntakeState = IntakeState.IntakeOff;
 
@@ -84,7 +82,7 @@ public class ShooterWithIntake extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
         feederMotor = hardwareMap.get(DcMotor.class, "feeder_motor");
 
-
+        liftServo = hardwareMap.get(Servo.class, "lift_servo");
 
 
         // 3. Set LauncherMotor directions
@@ -196,7 +194,8 @@ public class ShooterWithIntake extends LinearOpMode {
             rightBackDrive.setPower(backrightPower);
 
             // 7. Add telemetry for debugging
-
+            launch(Now);
+            Now = false;
 
 
         }
@@ -236,6 +235,16 @@ public class ShooterWithIntake extends LinearOpMode {
         else if (gamepad1.b) {
             launcherMotor.setVelocity(STOP_VELOCITY);
         }
+
+        if (gamepad1.right_trigger > 0.5) {
+            Now = true; // Shoot
+        }
+        if (gamepad1.left_bumper) {
+            liftServo.setPosition(1);
+        }
+        else if (gamepad1.right_bumper) {
+            liftServo.setPosition(-1);
+        }
     }
     void launch(boolean shotRequested) {
         switch (launchState) {
@@ -245,6 +254,7 @@ public class ShooterWithIntake extends LinearOpMode {
                     // It holds its last value. We can still reset the timer to be ready.
                     launchState = LaunchStateEnum.SPIN_UP;
                 }
+                liftServo.setPosition(-1);
                 break;
             case SPIN_UP:
                 launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY);
@@ -254,7 +264,7 @@ public class ShooterWithIntake extends LinearOpMode {
                 break;
 
             case LAUNCH:
-                //lift the launch servo
+                liftServo.setPosition(1);
                 feederTimer.reset();
                 launchState = LaunchStateEnum.LAUNCHING;
                 break;
