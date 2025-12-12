@@ -2,6 +2,8 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import androidx.annotation.ChecksSdkIntAtLeast;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -39,7 +41,9 @@ public class MotorRampWithTriggers_StateMachine extends LinearOpMode {
 
     // Declare OpMode members
     private DcMotor motor = null;
+
     private double currentMotorPower = 0.0;
+
 
 
     // Create a timer to manage the ramp rate

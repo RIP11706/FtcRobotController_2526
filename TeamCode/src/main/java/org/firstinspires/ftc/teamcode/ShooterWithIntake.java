@@ -2,21 +2,27 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@TeleOp
+import org.firstinspires.ftc.robotcontroller.external.samples.UtilityOctoQuadConfigMenu;
+
+@TeleOp(name = ": ShooterWithIntake V1", group = "Concept")
+
 public class ShooterWithIntake extends LinearOpMode {
 
     // 1. Define the states for our state machine
-    enum RampState {
-        STEADY,
-        RAMPING_UP,
-        RAMPING_DOWN
+    enum LaunchStateEnum {
+        IDLE,
+        SPIN_UP,
+        LAUNCH,
+        LAUNCHING,
     }
 
     // Set the initial state
-    private RampState currentState = RampState.STEADY;
+    private LaunchStateEnum launchState = LaunchStateEnum.IDLE;
 
     // Define constants for LauncherMotor power and ramp rate
     static final double RAMP_POWER_INCREMENT = 0.02;  // Power increment per cycle (was INCREMENT)
@@ -24,11 +30,18 @@ public class ShooterWithIntake extends LinearOpMode {
     static final double MAX_SPEED = 1.0;              // Maximum LauncherMotor speed (was MAX_FWD)
 
     // Declare OpMode members
-    private DcMotor LauncherMotor = null;
+    private DcMotorEx launcherMotor = null;
+    public  double LAUNCHER_TARGET_VELOCITY = 1275;
+    public  double LAUNCHER_MIN_VELOCITY = 1075;
+    private double STOP_VELOCITY = 0;
+    private double FEED_TIME_SECONDS = 0.4;
+
+    private DcMotor feederMotor = null;
+    private CRServo lift = null;
 
     private double currentMotorPower = 0.0;
-
-    private DcMotor Intakemotor;
+// lift servo
+    private DcMotor intakeMotor = null;
     private boolean IntakeOn = false;
     private DcMotor leftFrontDrive = null;
     private DcMotor rightFrontDrive = null;
@@ -45,15 +58,14 @@ public class ShooterWithIntake extends LinearOpMode {
     private IntakeState currentIntakeState = IntakeState.IntakeOff;
 
     // Create a timer to manage the ramp rate
-    private final ElapsedTime rampTimer = new ElapsedTime();
+    private  ElapsedTime feederTimer = new ElapsedTime();
 
     @Override
     public void runOpMode() {
 
         // Initialize the hardware variables.
         // IMPORTANT: Make sure the LauncherMotor name "shooter_drive" matches your robot's configuration.
-        LauncherMotor = hardwareMap.get(DcMotor.class, "shooter_drive");
-        Intakemotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        launcherMotor = hardwareMap.get(DcMotorEx.class, "shooter_drive");
         // Optional: If the LauncherMotor runs backwards, uncomment the next line
         // LauncherMotor.setDirection(DcMotor.Direction.REVERSE);
 
@@ -69,6 +81,11 @@ public class ShooterWithIntake extends LinearOpMode {
         rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
         leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
         rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        feederMotor = hardwareMap.get(DcMotor.class, "feeder_motor");
+
+
+
 
         // 3. Set LauncherMotor directions
         // Most robots need the motors on one side to be reversed to drive forward.
@@ -96,8 +113,7 @@ public class ShooterWithIntake extends LinearOpMode {
         waitForStart();
 
         // Reset the timer once the OpMode starts
-        rampTimer.reset();
-
+        feederTimer.reset();
         // The main loop runs until the driver presses STOP
         while (opModeIsActive()) {
 
@@ -106,60 +122,35 @@ public class ShooterWithIntake extends LinearOpMode {
             // 2. Determine the next state based on trigger input
             updateStateFromInput();
             // 3. Execute logic based on the current state
-            switch (currentState) {
-                case RAMPING_UP:
-                    // If enough time has passed, increment power
-                    if (rampTimer.milliseconds() > RAMP_CYCLE_MS) {
-                        currentMotorPower += RAMP_POWER_INCREMENT;
-                        // Clamp the power to the maximum speed
-                        if (currentMotorPower > MAX_SPEED) {
-                            currentMotorPower = MAX_SPEED;
-                        }
-                        rampTimer.reset(); // Reset the timer for the next increment
-                    }
-                    break;
 
-                case RAMPING_DOWN:
-                    // If enough time has passed, decrement power
-                    if (rampTimer.milliseconds() > RAMP_CYCLE_MS) {
-                        currentMotorPower -= RAMP_POWER_INCREMENT;
-                        // Clamp the power to zero (LauncherMotor only runs forward in this design)
-                        if (currentMotorPower < 0) {
-                            currentMotorPower = 0;
-                        }
-                        rampTimer.reset(); // Reset the timer for the next decrement
-                    }
-                    break;
-
-                case STEADY:
-                    // In the STEADY state, the LauncherMotor power does not change automatically.
-                    // It holds its last value. We can still reset the timer to be ready.
-                    rampTimer.reset();
-                    break;
-            }
             // 4. Set the LauncherMotor power
-            LauncherMotor.setPower(currentMotorPower);
+            launcherMotor.setPower(currentMotorPower);
 
             // 5. Provide telemetry for debugging
-            telemetry.addData("State", currentState.toString());
-            telemetry.addData("Motor Power", "%.2f", currentMotorPower);
+            telemetry.addData("State", launchState.toString());
+            telemetry.addData("Launch Power", "%.2f", currentMotorPower);
             telemetry.addData("Right Trigger", "%.2f", gamepad1.right_trigger);
             telemetry.addData("Left Trigger", "%.2f", gamepad1.left_trigger);
+            telemetry.addData("Feeder Power", "%.2f", feederMotor.getPower());
+            telemetry.addData("Intake Power", "%.2f", intakeMotor.getPower());
             telemetry.update();
 
             // --- INTAKE ---
             switch (currentIntakeState) {
                 case IntakeOff:
-                    Intakemotor.setPower(0);
+                    intakeMotor.setPower(0);
+                    feederMotor.setPower(0);
                     break;
                 case Intake1:
-                    Intakemotor.setPower(0.1);
+                    intakeMotor.setPower(-0.5);
+                    feederMotor.setPower(-0.5);
                     break;
                 case Intake2:
-                    Intakemotor.setPower(0.1);
+                    intakeMotor.setPower(-0.5);
+                    feederMotor.setPower(-0.5);
                     break;
                 case Intake3:
-                    Intakemotor.setPower(-0.1);
+                    intakeMotor.setPower(0.3);
                     break;
 
 
@@ -184,25 +175,34 @@ public class ShooterWithIntake extends LinearOpMode {
             // 5. Get joystick values from gamepad 1
             // The Y-axis of the joysticks is inverted (pushing forward gives a negative value).
             // We negate the values to make forward positive.
-            double leftPower = -gamepad1.left_stick_y;
-            double rightPower = -gamepad1.right_stick_y;
+            double y = gamepad1.left_stick_y;
+            double x = -gamepad1.left_stick_x;
+            double rx = gamepad1.right_stick_y;
+
+            // 6. Calculate the power for each LauncherMotor
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
             // 6. Set the power for each LauncherMotor
             // The left joystick controls the left motors, and the right joystick controls the right motors.
-            leftFrontDrive.setPower(leftPower);
-            leftBackDrive.setPower(leftPower);
-            rightFrontDrive.setPower(rightPower);
-            rightBackDrive.setPower(rightPower);
+            double frontleftPower = (y + x + rx) / denominator;
+            double frontrightPower = (y - x - rx) / denominator;
+            double backleftPower = (y - x + rx) / denominator;
+            double backrightPower = (y + x - rx) / denominator;
+
+
+
+            leftFrontDrive.setPower(frontleftPower);
+            leftBackDrive.setPower(frontrightPower);
+            rightFrontDrive.setPower(backleftPower);
+            rightBackDrive.setPower(backrightPower);
 
             // 7. Add telemetry for debugging
-            telemetry.addData("Status", "Running");
-            telemetry.addData("Left Power", "%.2f", leftPower);
-            telemetry.addData("Right Power", "%.2f", rightPower);
-            telemetry.update();
+
+
 
         }
 
         // Stop the LauncherMotor when the OpMode ends
-        LauncherMotor.setPower(0);
+        launcherMotor.setPower(0);
     }
 
     /**
@@ -216,21 +216,57 @@ public class ShooterWithIntake extends LinearOpMode {
 
         // Safety check: If both triggers are pressed, force a ramp down.
         if (rightTriggerPressed && leftTriggerPressed) {
-            currentState = RampState.RAMPING_DOWN;
+            launchState = LaunchStateEnum.LAUNCH;
         }
         // If only the right trigger is pressed, ramp up.
         else if (rightTriggerPressed) {
-            currentState = RampState.RAMPING_UP;
+            launchState = LaunchStateEnum.SPIN_UP;
         }
         // If only the left trigger is pressed, ramp down.
         else if (leftTriggerPressed) {
-            currentState = RampState.RAMPING_DOWN;
+            launchState = LaunchStateEnum.LAUNCH;
         }
         // If no triggers are pressed, hold a steady speed.
         else {
-            currentState = RampState.STEADY;
+            launchState = LaunchStateEnum.IDLE;
+        }
+        if (gamepad1.y) {
+            launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY) ;
+        }
+        else if (gamepad1.b) {
+            launcherMotor.setVelocity(STOP_VELOCITY);
         }
     }
+    void launch(boolean shotRequested) {
+        switch (launchState) {
+            case IDLE:
+                if (shotRequested) {
+                    // In the STEADY state, the LauncherMotor power does not change automatically.
+                    // It holds its last value. We can still reset the timer to be ready.
+                    launchState = LaunchStateEnum.SPIN_UP;
+                }
+                break;
+            case SPIN_UP:
+                launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                if (launcherMotor.getVelocity() > LAUNCHER_MIN_VELOCITY){
+                    launchState = LaunchStateEnum.LAUNCH;
+                }
+                break;
+
+            case LAUNCH:
+                //lift the launch servo
+                feederTimer.reset();
+                launchState = LaunchStateEnum.LAUNCHING;
+                break;
+
+            case LAUNCHING:
+                if (feederTimer.seconds() > FEED_TIME_SECONDS) {
+                    launchState = LaunchStateEnum.IDLE;
+                    // lift servo down
+                }
+        }
+    }
+
 }
 
 
