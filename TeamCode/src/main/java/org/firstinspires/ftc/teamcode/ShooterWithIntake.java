@@ -29,10 +29,10 @@ public class ShooterWithIntake extends LinearOpMode {
 
     // Declare OpMode members
     private DcMotorEx launcherMotor = null;
-    public  double LAUNCHER_TARGET_VELOCITY = 1275;
-    public  double LAUNCHER_MIN_VELOCITY = 1075;
+    public  double LAUNCHER_TARGET_VELOCITY = 2300;
+    public  double LAUNCHER_MIN_VELOCITY = 2000;
     private double STOP_VELOCITY = 0;
-    private double FEED_TIME_SECONDS = 2.0;
+    private double FEED_TIME_SECONDS = 0.7;
 
     private DcMotor feederMotor = null;
     private Servo liftServo = null;
@@ -131,6 +131,7 @@ public class ShooterWithIntake extends LinearOpMode {
             telemetry.addData("Left Trigger", "%.2f", gamepad1.left_trigger);
             telemetry.addData("Feeder Power", "%.2f", feederMotor.getPower());
             telemetry.addData("Intake Power", "%.2f", intakeMotor.getPower());
+            telemetry.addData("Lift Servo", "%.2f", liftServo.getPosition());
             telemetry.update();
 
             // --- INTAKE ---
@@ -195,8 +196,13 @@ public class ShooterWithIntake extends LinearOpMode {
 
             // 7. Add telemetry for debugging
             launch(Now);
-            Now = false;
 
+            if ((gamepad1.right_trigger > 0.5) & IntakeOn) {
+                Now = true; // Shoot
+            }
+            else {
+                Now = false;
+            }
 
         }
 
@@ -214,21 +220,21 @@ public class ShooterWithIntake extends LinearOpMode {
         boolean leftTriggerPressed = gamepad1.left_trigger > 0.1;
 
         // Safety check: If both triggers are pressed, force a ramp down.
-        if (rightTriggerPressed && leftTriggerPressed) {
-            launchState = LaunchStateEnum.LAUNCH;
-        }
-        // If only the right trigger is pressed, ramp up.
-        else if (rightTriggerPressed) {
-            launchState = LaunchStateEnum.SPIN_UP;
-        }
+//        if (rightTriggerPressed && leftTriggerPressed) {
+//            launchState = LaunchStateEnum.LAUNCH;
+//        }
+//        // If only the right trigger is pressed, ramp up.
+//        if (rightTriggerPressed) {
+//            launchState = LaunchStateEnum.SPIN_UP;
+//        }
         // If only the left trigger is pressed, ramp down.
-        else if (leftTriggerPressed) {
-            launchState = LaunchStateEnum.LAUNCH;
-        }
-        // If no triggers are pressed, hold a steady speed.
-        else {
-            launchState = LaunchStateEnum.IDLE;
-        }
+//        else if (leftTriggerPressed) {
+//            launchState = LaunchStateEnum.LAUNCH;
+//        }
+//        // If no triggers are pressed, hold a steady speed.
+//        else {
+//            launchState = LaunchStateEnum.IDLE;
+//        }
         if (gamepad1.y) {
             launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY) ;
         }
@@ -236,15 +242,12 @@ public class ShooterWithIntake extends LinearOpMode {
             launcherMotor.setVelocity(STOP_VELOCITY);
         }
 
-        if (gamepad1.right_trigger > 0.5) {
-            Now = true; // Shoot
-        }
-        if (gamepad1.left_bumper) {
-            liftServo.setPosition(1);
-        }
-        else if (gamepad1.right_bumper) {
-            liftServo.setPosition(-1);
-        }
+//        if (gamepad1.left_bumper) {
+//            liftServo.setPosition(0.6);
+//        }
+//        else if (gamepad1.right_bumper) {
+//            liftServo.setPosition(0.3);
+//        }
     }
     void launch(boolean shotRequested) {
         switch (launchState) {
@@ -254,7 +257,7 @@ public class ShooterWithIntake extends LinearOpMode {
                     // It holds its last value. We can still reset the timer to be ready.
                     launchState = LaunchStateEnum.SPIN_UP;
                 }
-                liftServo.setPosition(-1);
+                liftServo.setPosition(0.6);
                 break;
             case SPIN_UP:
                 launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY);
@@ -264,7 +267,7 @@ public class ShooterWithIntake extends LinearOpMode {
                 break;
 
             case LAUNCH:
-                liftServo.setPosition(1);
+                liftServo.setPosition(0.3);
                 feederTimer.reset();
                 launchState = LaunchStateEnum.LAUNCHING;
                 break;
@@ -273,6 +276,7 @@ public class ShooterWithIntake extends LinearOpMode {
                 if (feederTimer.seconds() > FEED_TIME_SECONDS) {
                     launchState = LaunchStateEnum.IDLE;
                     // lift servo down
+                    liftServo.setPosition(0.6);
                 }
         }
     }
