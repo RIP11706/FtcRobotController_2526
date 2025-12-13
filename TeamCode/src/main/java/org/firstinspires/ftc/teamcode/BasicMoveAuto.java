@@ -3,42 +3,110 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 // Intake- Rev; Position 1,2,3- GoBuilda Servo Cont.; Indexer- GoBuilda Servo; Shooter- 6000 motor
 @Autonomous
 public class BasicMoveAuto extends OpMode implements MotorRampWithTriggers {
-    private DcMotor frontLeftMotor;
-    private DcMotor backLeftMotor;
-    private DcMotor frontRightMotor;
-    private DcMotor backRightMotor;
+
+    // 1. Define the states for our state machine
+    enum LaunchStateEnum {
+        IDLE,
+        SPIN_UP,
+        LAUNCH,
+        LAUNCHING,
+    }
+
+    // Set the initial state
+    private ShooterWithIntake.LaunchStateEnum launchState = ShooterWithIntake.LaunchStateEnum.IDLE;
+
+    // Define constants for LauncherMotor power and ramp rate
+    static final double RAMP_POWER_INCREMENT = 0.02;  // Power increment per cycle (was INCREMENT)
+    static final long RAMP_CYCLE_MS = 50;           // Time in milliseconds per ramp cycle (was CYCLE_MS)
+    static final double MAX_SPEED = 1.0;              // Maximum LauncherMotor speed (was MAX_FWD)
+
+    // Declare OpMode members
+    private DcMotorEx launcherMotor = null;
+    public  double LAUNCHER_TARGET_VELOCITY = 1500;
+    public  double LAUNCHER_MIN_VELOCITY = 1200;
+    private double STOP_VELOCITY = 0;
+    private double FEED_TIME_SECONDS = 0.7;
+    private double LIFT_TIME_SECONDS = 1.4;
+
+    private double FEED_POWER = -0.8;
+    private double INTAKE_POSITION = 0.6;
+    private double LAUNCH_POSITION = 0.2;
+    private DcMotor feederMotor = null;
+    private Servo liftServo = null;
+
+    private double currentMotorPower = 0.0;
+    // lift servo
+    private DcMotor intakeMotor = null;
+    private boolean IntakeOn = false;
+    private DcMotor leftFrontDrive = null;
+    private DcMotor rightFrontDrive = null;
+    private DcMotor leftBackDrive = null;
+    private DcMotor rightBackDrive = null;
+    enum IntakeState {
+        IntakeOff,
+        Intake1,
+        Intake2,
+        Intake3
+    }
+    boolean Now = false;
+    // Set the initial state
+    private ShooterWithIntake.IntakeState currentIntakeState = ShooterWithIntake.IntakeState.IntakeOff;
+
+    // Create a timer to manage the ramp rate
+    private  ElapsedTime feederTimer = new ElapsedTime();
     private double timeAtStart;
 
 
     @Override
     public void init() {
-        frontLeftMotor = hardwareMap.get(DcMotor.class, "front_left");
-        backLeftMotor = hardwareMap.get(DcMotor.class, "back_left");
-        frontRightMotor = hardwareMap.get(DcMotor.class, "front_right");
-        backRightMotor = hardwareMap.get(DcMotor.class, "back_right");
+
+        // Initialize the hardware variables.
+        // IMPORTANT: Make sure the LauncherMotor name "shooter_drive" matches your robot's configuration.
+        launcherMotor = hardwareMap.get(DcMotorEx.class, "shooter_drive");
+        // Optional: If the LauncherMotor runs backwards, uncomment the next line
+        // LauncherMotor.setDirection(DcMotor.Direction.REVERSE);
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.addData(">", "Press Start to begin");
+
+        telemetry.update();
+        // telemetry.update();
+        //telemetry.speak("Six seven");
+
+        // Map the motors to the names in the robot's configuration file
+        leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
+        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+        leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
+        rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        feederMotor = hardwareMap.get(DcMotor.class, "feeder_motor");
+
+        liftServo = hardwareMap.get(Servo.class, "lift_servo");
     }
 
     @Override
     public void start() {
         timeAtStart = getRuntime();
-        frontRightMotor.setPower(1);
-        frontLeftMotor.setPower(1);
-        backRightMotor.setPower(1);
-        backLeftMotor.setPower(1);
+        rightFrontDrive.setPower(1);
+        leftFrontDrive.setPower(1);
+        rightBackDrive.setPower(1);
+        leftBackDrive.setPower(1);
     }
 
     @Override
     public void loop() {
         if (getRuntime() - timeAtStart > 2) {
-            frontRightMotor.setPower(0);
-            frontLeftMotor.setPower(0);
-            backRightMotor.setPower(0);
-            backLeftMotor.setPower(0);
+            rightFrontDrive.setPower(0);
+            leftFrontDrive.setPower(0);
+            rightBackDrive.setPower(0);
+            leftBackDrive.setPower(0);
             requestOpModeStop();
         }
     }
@@ -64,8 +132,9 @@ public class BasicMoveAuto extends OpMode implements MotorRampWithTriggers {
 
     // Create a timer to manage the ramp rate
     private final ElapsedTime rampTimer = new ElapsedTime();
+    private final ElapsedTime moveTimer = new ElapsedTime();
 
-
+ l
     @Override
     public void runOpMode() {
 
@@ -86,6 +155,7 @@ public class BasicMoveAuto extends OpMode implements MotorRampWithTriggers {
 
         // Reset the timer once the OpMode starts
         rampTimer.reset();
+        moveTimer.reset();
 
         // The main loop runs until the driver presses STOP
         while (opModeIsActive()) {
@@ -93,7 +163,9 @@ public class BasicMoveAuto extends OpMode implements MotorRampWithTriggers {
             // 2. Determine the next state based on trigger input
             updateStateFromInput();
 
-            // 3. Execute logic based on the current state
+
+
+            /*// 3. Execute logic based on the current state
             switch (currentState) {
                 case RAMPING_UP:
                     // If enough time has passed, increment power
@@ -130,7 +202,7 @@ public class BasicMoveAuto extends OpMode implements MotorRampWithTriggers {
 
             // 4. Set the motor power
 
-            motor.setPower(currentMotorPower);
+            motor.setPower(currentMotorPower);*/
 
             // 5. Provide telemetry for debugging
             telemetry.addData("State", currentState.toString());

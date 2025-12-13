@@ -29,11 +29,15 @@ public class ShooterWithIntake extends LinearOpMode {
 
     // Declare OpMode members
     private DcMotorEx launcherMotor = null;
-    public  double LAUNCHER_TARGET_VELOCITY = 2300;
-    public  double LAUNCHER_MIN_VELOCITY = 2000;
+    public  double LAUNCHER_TARGET_VELOCITY = 1500;
+    public  double LAUNCHER_MIN_VELOCITY = 1200;
     private double STOP_VELOCITY = 0;
     private double FEED_TIME_SECONDS = 0.7;
+    private double LIFT_TIME_SECONDS = 1.4;
 
+    private double FEED_POWER = -0.8;
+    private double INTAKE_POSITION = 0.6;
+    private double LAUNCH_POSITION = 0.2;
     private DcMotor feederMotor = null;
     private Servo liftServo = null;
 
@@ -141,12 +145,12 @@ public class ShooterWithIntake extends LinearOpMode {
                     feederMotor.setPower(0);
                     break;
                 case Intake1:
-                    intakeMotor.setPower(-0.5);
-                    feederMotor.setPower(-0.5);
+                    intakeMotor.setPower(FEED_POWER);
+                    feederMotor.setPower(FEED_POWER);
                     break;
                 case Intake2:
-                    intakeMotor.setPower(-0.5);
-                    feederMotor.setPower(-0.5);
+                    intakeMotor.setPower(FEED_POWER);
+                    feederMotor.setPower(FEED_POWER);
                     break;
                 case Intake3:
                     intakeMotor.setPower(0.3);
@@ -197,7 +201,7 @@ public class ShooterWithIntake extends LinearOpMode {
             // 7. Add telemetry for debugging
             launch(Now);
 
-            if ((gamepad1.right_trigger > 0.5) & IntakeOn) {
+            if ((gamepad1.right_trigger > 0.3) & !IntakeOn) {
                 Now = true; // Shoot
             }
             else {
@@ -257,12 +261,16 @@ public class ShooterWithIntake extends LinearOpMode {
                     // It holds its last value. We can still reset the timer to be ready.
                     launchState = LaunchStateEnum.SPIN_UP;
                 }
-                liftServo.setPosition(0.6);
+                liftServo.setPosition(INTAKE_POSITION);
                 break;
             case SPIN_UP:
                 launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY);
                 if (launcherMotor.getVelocity() > LAUNCHER_MIN_VELOCITY){
                     launchState = LaunchStateEnum.LAUNCH;
+                }
+                if (gamepad1.b) {
+                    launchState = LaunchStateEnum.IDLE;
+                    launcherMotor.setVelocity(0);
                 }
                 break;
 
@@ -274,9 +282,12 @@ public class ShooterWithIntake extends LinearOpMode {
 
             case LAUNCHING:
                 if (feederTimer.seconds() > FEED_TIME_SECONDS) {
-                    launchState = LaunchStateEnum.IDLE;
+
                     // lift servo down
-                    liftServo.setPosition(0.6);
+                    liftServo.setPosition(LAUNCH_POSITION);
+                    if (feederTimer.seconds() > LIFT_TIME_SECONDS) {
+                        launchState = LaunchStateEnum.IDLE;
+                    }
                 }
         }
     }
