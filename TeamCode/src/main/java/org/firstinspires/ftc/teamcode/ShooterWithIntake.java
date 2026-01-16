@@ -219,7 +219,8 @@ public class ShooterWithIntake extends LinearOpMode {
      * This method centralizes the logic for state transitions.
      */
     private void updateStateFromInput() {
-        // Read trigger values using a threshold to avoid jitter from sensitive triggers
+        // Read trigger values using a threshold to avoid jitter from sensitive trigger
+        // +s
         boolean rightTriggerPressed = gamepad1.right_trigger > 0.1;
         boolean leftTriggerPressed = gamepad1.left_trigger > 0.1;
 
@@ -275,7 +276,7 @@ public class ShooterWithIntake extends LinearOpMode {
                 break;
 
             case LAUNCH:
-                liftServo.setPosition(0.3);
+                liftServo.setPosition(0.4);
                 feederTimer.reset();
                 launchState = LaunchStateEnum.LAUNCHING;
                 break;
