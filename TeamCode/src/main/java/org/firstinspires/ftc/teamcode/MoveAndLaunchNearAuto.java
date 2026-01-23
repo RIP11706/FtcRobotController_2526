@@ -1,21 +1,29 @@
 package org.firstinspires.ftc.teamcode;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.INCH;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.FEED_TIME_SECONDS;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.INTAKE_POSITION;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.LAUNCHER_MIN_VELOCITY;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.LAUNCHER_TARGET_VELOCITY;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.LAUNCH_POSITION;
+import static org.firstinspires.ftc.teamcode.ShooterWithIntake.LIFT_TIME_SECONDS;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcontroller.external.samples.SensorGoBildaPinpoint;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 @Autonomous
-public class BasicMoveAuto extends LinearOpMode {
+public class MoveAndLaunchNearAuto extends LinearOpMode {
 
     GoBildaPinpointDriver pinpoint;
     private DcMotor leftFrontDrive = null;
@@ -29,7 +37,6 @@ public class BasicMoveAuto extends LinearOpMode {
     // lift servo
     private DcMotor intakeMotor = null;
     ElapsedTime feederTimer = new ElapsedTime(ElapsedTime.SECOND_IN_NANO);
-
     enum LaunchStateEnum {
         IDLE,
         SPIN_UP,
@@ -107,28 +114,27 @@ public class BasicMoveAuto extends LinearOpMode {
         rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
 
-
         pinpoint.resetPosAndIMU();
+
         waitForStart();
 
         pinpoint.resetPosAndIMU();
 
         if (isStopRequested()) return;
-        pinpoint.resetPosAndIMU();
 
         boolean moved = false;
 
-        leftFrontDrive.setPower(0.5);
-        rightFrontDrive.setPower(0.5);
-        leftBackDrive.setPower(0.5);
-        rightBackDrive.setPower(0.5);
+        leftFrontDrive.setPower(-0.5);
+        rightFrontDrive.setPower(-0.5);
+        leftBackDrive.setPower(-0.5);
+        rightBackDrive.setPower(-0.5);
         ElapsedTime timer2 = new ElapsedTime(ElapsedTime.SECOND_IN_NANO);
         timer2.reset();
 
-        while (opModeIsActive()) {
+        while(opModeIsActive()){
 
-            while (!moved) {
-                if (pinpoint.getPosX(INCH) > 12) {
+            while(!moved){
+                if (pinpoint.getPosX(INCH) < -35) {
                     leftFrontDrive.setPower(0);
                     rightFrontDrive.setPower(0);
                     leftBackDrive.setPower(0);
@@ -138,8 +144,55 @@ public class BasicMoveAuto extends LinearOpMode {
                     pinpoint.update();
                 }
             }
+            if(timer2.seconds() <= 20) {
+                switch (launchState) {
+                    case IDLE:
+                        if (feederTimer.seconds() > 2.5) {
+                            // In the STEADY state, the LauncherMotor power does not change automatically.
+                            // It holds its last value. We can still reset the timer to be ready.
+                            launchState = ShooterWithIntake.LaunchStateEnum.SPIN_UP;
+                        }
+                        intakeMotor.setPower(-0.8);
+                        feederMotor.setPower(-0.8);
+                        liftServo.setPosition(INTAKE_POSITION);
+                        break;
+                    case SPIN_UP:
+                        launcherMotor.setVelocity(LAUNCHER_TARGET_VELOCITY - 400);
+                        if (launcherMotor.getVelocity() > LAUNCHER_MIN_VELOCITY - 400) {
+                            launchState = ShooterWithIntake.LaunchStateEnum.LAUNCH;
+                        }
+                        intakeMotor.setPower(0);
+                        feederMotor.setPower(0);
+                        break;
 
-            requestOpModeStop();
+                    case LAUNCH:
+                        liftServo.setPosition(0.4);
+                        feederTimer.reset();
+                        launchState = ShooterWithIntake.LaunchStateEnum.LAUNCHING;
+                        break;
+
+                    case LAUNCHING:
+                        if (feederTimer.seconds() > FEED_TIME_SECONDS) {
+
+                            // lift servo down
+                            liftServo.setPosition(LAUNCH_POSITION);
+                            if (feederTimer.seconds() > LIFT_TIME_SECONDS) {
+                                launchState = ShooterWithIntake.LaunchStateEnum.IDLE;
+                                feederTimer.reset();
+                            }
+                        }
+                }
+            } else {
+                leftFrontDrive.setPower(0.5);
+                rightFrontDrive.setPower(-0.5);
+                leftBackDrive.setPower(-0.5);
+                rightBackDrive.setPower(0.5);
+            }
+
+            if(timer2.seconds() > 21.25) {
+                requestOpModeStop();
+            }
+
         }
     }
 }

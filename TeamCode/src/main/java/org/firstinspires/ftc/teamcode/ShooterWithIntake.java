@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -29,15 +30,15 @@ public class ShooterWithIntake extends LinearOpMode {
 
     // Declare OpMode members
     private DcMotorEx launcherMotor = null;
-    public  double LAUNCHER_TARGET_VELOCITY = 1500;
-    public  double LAUNCHER_MIN_VELOCITY = 1200;
+    public static double LAUNCHER_TARGET_VELOCITY = 1500;
+    public static double LAUNCHER_MIN_VELOCITY = 1200;
     private double STOP_VELOCITY = 0;
-    private double FEED_TIME_SECONDS = 0.7;
-    private double LIFT_TIME_SECONDS = 1.4;
+    public static double FEED_TIME_SECONDS = 0.7;
+    public static double LIFT_TIME_SECONDS = 1.4;
 
-    private double FEED_POWER = -0.8;
-    private double INTAKE_POSITION = 0.6;
-    private double LAUNCH_POSITION = 0.2;
+    public static double FEED_POWER = -0.8;
+    public static double INTAKE_POSITION = 0.6;
+    public static double LAUNCH_POSITION = 0.2;
     private DcMotor feederMotor = null;
     private Servo liftServo = null;
 
@@ -69,7 +70,7 @@ public class ShooterWithIntake extends LinearOpMode {
         // IMPORTANT: Make sure the LauncherMotor name "shooter_drive" matches your robot's configuration.
         launcherMotor = hardwareMap.get(DcMotorEx.class, "shooter_drive");
         // Optional: If the LauncherMotor runs backwards, uncomment the next line
-        // LauncherMotor.setDirection(DcMotor.Direction.REVERSE);
+        launcherMotor.setDirection(DcMotor.Direction.REVERSE);
 
         telemetry.addData("Status", "Initialized");
         telemetry.addData(">", "Press Start to begin");
@@ -93,8 +94,8 @@ public class ShooterWithIntake extends LinearOpMode {
         // Most robots need the motors on one side to be reversed to drive forward.
         // If your robot drives backwards when you push the joysticks forward,
         // reverse the directions here. For example, switch REVERSE to FORWARD.
-        leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
+        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
+        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
 
@@ -148,27 +149,21 @@ public class ShooterWithIntake extends LinearOpMode {
                     intakeMotor.setPower(FEED_POWER);
                     feederMotor.setPower(FEED_POWER);
                     break;
-                case Intake2:
-                    intakeMotor.setPower(FEED_POWER);
-                    feederMotor.setPower(FEED_POWER);
-                    break;
                 case Intake3:
                     intakeMotor.setPower(0.3);
                     break;
-
-
             }
 
-            if (gamepad1.xWasPressed()) {
-                IntakeOn = !IntakeOn;
-            }
+            IntakeOn = gamepad1.left_trigger >= 0.2;
 
             if (IntakeOn) {
                 currentIntakeState = IntakeState.Intake1;
-            } else if (gamepad1.a){
-               currentIntakeState = IntakeState.Intake3;
-            } else {
+            }  else {
                 currentIntakeState = IntakeState.IntakeOff;
+            }
+
+            if(gamepad1.leftBumperWasPressed()){
+                FEED_POWER *= -1;
             }
 
 
@@ -178,25 +173,23 @@ public class ShooterWithIntake extends LinearOpMode {
             // 5. Get joystick values from gamepad 1
             // The Y-axis of the joysticks is inverted (pushing forward gives a negative value).
             // We negate the values to make forward positive.
-            double y = gamepad1.left_stick_y;
-            double x = -gamepad1.left_stick_x;
-            double rx = gamepad1.right_stick_y;
+            double y  = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
+            double x  = -gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+            double rx =  gamepad1.right_stick_x;
 
-            // 6. Calculate the power for each LauncherMotor
+            // Denominator is the largest motor power (absolute value) or 1
+            // This ensures all the powers maintain the same ratio,
+            // but only if at least one is out of the range [-1, 1]
             double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            // 6. Set the power for each LauncherMotor
-            // The left joystick controls the left motors, and the right joystick controls the right motors.
-            double frontleftPower = (y + x + rx) / denominator;
-            double frontrightPower = (y - x - rx) / denominator;
-            double backleftPower = (y - x + rx) / denominator;
-            double backrightPower = (y + x - rx) / denominator;
+            double frontLeftPower = (y + x + rx) / denominator;
+            double backLeftPower = (y - x + rx) / denominator;
+            double frontRightPower = (y - x - rx) / denominator;
+            double backRightPower = (y + x - rx) / denominator;
 
-
-
-            leftFrontDrive.setPower(frontleftPower);
-            leftBackDrive.setPower(frontrightPower);
-            rightFrontDrive.setPower(backleftPower);
-            rightBackDrive.setPower(backrightPower);
+            leftFrontDrive.setPower(frontLeftPower);
+            leftBackDrive.setPower(backLeftPower);
+            rightFrontDrive.setPower(frontRightPower);
+            rightBackDrive.setPower(backRightPower);
 
             // 7. Add telemetry for debugging
             launch(Now);
